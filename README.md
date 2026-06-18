@@ -364,7 +364,7 @@ The force-based contact radius is
 
 $$
 a_F =
-\left(\frac{3F_nR^*}{4E^*}\right)^{1/3}.
+\left(\frac{3F_{n}R^{*}}{4E^{*}}\right)^{1/3}.
 $$
 
 The velocity-based contact radius is estimated from
@@ -372,10 +372,10 @@ The velocity-based contact radius is estimated from
 $$
 \delta_\mathrm{max} =
 \left(
-\frac{15m^*v_n^2}{16E^*\sqrt{R^*}}
+\frac{15m^{*}v_n^{2}}{16E^{*}\sqrt{R^{*}}}
 \right)^{2/5},
 \qquad
-a_v = \sqrt{R^*\delta_\mathrm{max}}.
+a_{v} = \sqrt{R^{*}\delta_{\mathrm{max}}}.
 $$
 
 The affected-depth proxy is
