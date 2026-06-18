@@ -37,7 +37,7 @@ simulation before they become lost atoms.
 - `analyze_dem.py`: postprocesses LAMMPS outputs and generates CSV files and
   figures.
 - `requirements.txt`: Python packages required by `analyze_dem.py`.
-- `results/`: baseline run results completed on Adroit.
+- `results/`: baseline run results completed on Adroit. Some large output files (e.g., *.dump) are not included.
 
 The production values for `nsteps`, `npart`, dump intervals, timestep, geometry, and
 material/contact parameters should be decided after convergence tests.
