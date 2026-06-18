@@ -1,0 +1,7 @@
+# Python and local editor state
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# Local run markers
+.last_test_run_id

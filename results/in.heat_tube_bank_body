@@ -1,0 +1,102 @@
+# Shared body for continuous-feed Helium Extraction and Acquisition Testbed (HEAT)-like tube-bank DEM runs.
+
+units           si
+atom_style      sphere
+boundary        f f f
+newton          off
+comm_modify     mode single vel yes
+processors      * 1 *
+
+region          box block 0 ${lx} 0 ${ly} 0 ${lz} units box
+create_box      2 box
+
+include         tube_particles.in
+set             type 2 diameter ${tube_diameter} density ${tube_density}
+group           tubes type 2
+group           mobile type 1
+
+pair_style      gran/hooke/history ${kn} NULL ${gamma} NULL ${mu} 0
+pair_coeff      * *
+neighbor        3.0e-5 bin
+neigh_modify    delay 0 every 1 check yes exclude group tubes tubes
+
+fix             int mobile nve/sphere
+fix             grav mobile gravity ${g_accel} vector 0 0 -1
+fix             wallx mobile wall/gran hooke/history ${kn} NULL ${gamma} NULL ${mu} 0 xplane 0.0 ${lx}
+fix             wally mobile wall/gran hooke/history ${kn} NULL ${gamma} NULL ${mu} 0 yplane 0.0 ${ly}
+
+region          feed block ${feed_xlo} ${feed_xhi} ${feed_ylo} ${feed_yhi} ${feed_zlo} ${feed_zhi} units box
+region          tube_bank block 0 ${lx} 0 ${ly} ${bank_zlo} ${bank_zhi} units box
+region          outlet block 0 ${lx} 0 ${ly} 0 ${outlet_zhi} units box
+group           mobile_bank dynamic mobile region tube_bank every ${global_every}
+group           mobile_outlet dynamic mobile region outlet every ${global_every}
+
+fix             feed mobile pour ${npart} 1 643219 region feed diam range ${dlo} ${dhi} dens ${rho} ${rho} vel -0.03 0.03 -0.01 0.01 -0.35 vol 0.22 100 id max
+fix             outlet mobile evaporate ${outlet_every} ${outlet_max} outlet ${outlet_seed}
+
+timestep        ${dt}
+
+compute         contact_count mobile contact/atom
+compute         ke_atom mobile ke/atom
+compute         erot_atom mobile erotate/sphere/atom
+compute         sum_contact mobile reduce sum c_contact_count
+compute         max_contact mobile reduce max c_contact_count
+compute         sum_ke mobile reduce sum c_ke_atom
+compute         sum_erot mobile reduce sum c_erot_atom
+compute         bank_contact mobile_bank reduce sum c_contact_count
+compute         bank_ke mobile_bank reduce sum c_ke_atom
+compute         bank_erot mobile_bank reduce sum c_erot_atom
+
+variable        nmobile equal count(mobile)
+variable        nbank equal count(mobile_bank)
+variable        noutlet equal count(mobile_outlet)
+variable        dt_s equal ${dt}
+variable        sample_dt_s equal ${dt}*${contact_every}
+variable        pre_steps equal ${dump_start}
+variable        production_steps equal ${dump_stop}-${dump_start}
+variable        post_steps equal ${nsteps}-${dump_stop}
+
+fix             global_out all ave/time ${global_every} 1 ${global_every} &
+                v_nmobile v_nbank v_noutlet f_outlet c_sum_contact c_max_contact c_sum_ke c_sum_erot c_bank_contact c_bank_ke c_bank_erot &
+                file global_metrics.dat
+
+thermo          ${thermo_every}
+thermo_style    custom step time atoms v_nmobile v_nbank v_noutlet f_outlet ke c_sum_contact c_max_contact c_sum_ke c_sum_erot
+thermo_modify   lost warn
+
+print           "Continuous-feed Helium Extraction and Acquisition Testbed (HEAT)-like tube-bank run label = ${run_label}"
+print           "dt_s = ${dt_s}"
+print           "contact_sample_dt_s = ${sample_dt_s}"
+print           "tube_bank_z_range_m = ${bank_zlo} ${bank_zhi}"
+print           "outlet_z_range_m = 0 ${outlet_zhi}"
+print           "outlet_delete_every_steps = ${outlet_every}"
+print           "outlet_delete_max_atoms = ${outlet_max}"
+print           "dump_window_steps = ${dump_start} ${dump_stop}"
+
+run             ${pre_steps}
+
+compute         cids all property/local patom1 patom2 ptype1 ptype2 cutoff radius
+compute         cpair all pair/local dist dx dy dz force fx fy fz p1 p2 p3 p4 cutoff radius
+
+dump            sync mobile custom ${sync_every} particles_sync.dump &
+                id type radius mass x y z vx vy vz omegax omegay omegaz fx fy fz tqx tqy tqz c_contact_count c_ke_atom c_erot_atom
+dump_modify     sync sort id
+
+dump            contacts all local ${contact_every} contact_events.local &
+                index c_cids[1] c_cids[2] c_cids[3] c_cids[4] &
+                c_cpair[1] c_cpair[2] c_cpair[3] c_cpair[4] &
+                c_cpair[5] c_cpair[6] c_cpair[7] c_cpair[8] &
+                c_cpair[9] c_cpair[10] c_cpair[11] c_cpair[12]
+
+dump            traj all custom ${traj_every} trajectory_viz.dump id type radius mass x y z vx vy vz
+dump_modify     traj sort id
+
+run             ${production_steps}
+
+undump          sync
+undump          contacts
+undump          traj
+uncompute       cids
+uncompute       cpair
+
+if "${post_steps} > 0" then "run ${post_steps}"
