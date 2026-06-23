@@ -126,9 +126,7 @@ $$
 The plotted processed-flow rate is
 
 $$
-\dot{M}_\mathrm{processed}(t)
-=
-\frac{dM_\mathrm{processed}}{dt}.
+\dot{M}_\mathrm{processed}(t)=\frac{dM_\mathrm{processed}}{dt}.
 $$
 
 This is more direct than estimating flow from the changing mass still present
