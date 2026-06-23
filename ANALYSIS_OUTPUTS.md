@@ -204,9 +204,7 @@ largest force-based `d_actual` value that the grain experienced during the
 sampled analysis window:
 
 $$
-d_{\mathrm{actual},i}^{\max}
-=
-\max_j d_{\mathrm{actual},ij}.
+d_{\mathrm{actual},i}^{\max}=\max_j d_{\mathrm{actual},ij}.
 $$
 
 This color is a history value assigned to the grain and then shown at its final
