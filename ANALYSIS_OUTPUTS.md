@@ -72,7 +72,7 @@ The force-based Hertz contact radius is
 
 $$
 a_F =
-\left(\frac{3F_nR^*}{4E^*}\right)^{1/3}.
+\left(\frac{3F_{n}R^{\ast}}{4E^{\ast}}\right)^{1/3}.
 $$
 
 The mechanically affected depth proxy is
@@ -90,10 +90,10 @@ the contact point:
 $$
 \delta_\mathrm{max} =
 \left(
-\frac{15m^*v_n^2}{16E^*\sqrt{R^*}}
+\frac{15m^{\ast}v_n^{2}}{16E^{\ast}\sqrt{R^{\ast}}}
 \right)^{2/5},
 \qquad
-a_v = \sqrt{R^*\delta_\mathrm{max}}.
+a_{v} = \sqrt{R^{\ast}\delta_{\mathrm{max}}}.
 $$
 
 Here `m*` is the effective contact mass and `v_n` is the normal component of
