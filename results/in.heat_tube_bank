@@ -1,6 +1,6 @@
-# Continuous-feed Helium Extraction and Acquisition Testbed (HEAT)-like tube-bank DEM test.
+# Continuous-feed Helium Extraction and Acquisition Testbed (HEAT)-like tube-bank DEM baseline.
 
-variable        run_label string test
+variable        run_label string baseline
 variable        lx equal 1.2e-2
 variable        ly equal 2.4e-3
 variable        lz equal 3.2e-2
@@ -21,14 +21,14 @@ variable        kn equal 1.0e3
 variable        gamma equal 2.0
 variable        mu equal 0.5
 variable        dt equal 2.0e-7
-variable        nsteps equal 600000
+variable        nsteps equal 1000000
 variable        thermo_every equal 20000
 variable        global_every equal 2000
 variable        sync_every equal 20000
 variable        contact_every equal 20000
-variable        traj_every equal 100000
+variable        traj_every equal 20000
 variable        dump_start equal 200000
-variable        dump_stop equal 600000
+variable        dump_stop equal 1000000
 variable        feed_xlo equal 5.0e-4
 variable        feed_xhi equal 1.15e-2
 variable        feed_ylo equal 2.0e-4

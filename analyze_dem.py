@@ -195,14 +195,6 @@ bed_header = [
 write_csv(root / "bed_time_series.csv", bed_header, bed_rows)
 
 bed_arr = np.asarray(bed_rows)
-flow = np.zeros(len(bed_arr))
-if len(bed_arr) > 2 and np.nanmax(bed_arr[:, 4]) > 0.0:
-    alive_mass = bed_arr[:, 4]
-    inserted_mass = np.maximum.accumulate(alive_mass)
-    exited_mass = np.maximum(0.0, inserted_mass - alive_mass)
-    flow = np.gradient(exited_mass, bed_arr[:, 1], edge_order=1)
-    flow[~np.isfinite(flow)] = 0.0
-    flow[flow < 0.0] = 0.0
 
 contact_cols = None
 contacts_by_step = {}
@@ -254,9 +246,9 @@ if contact_dump.exists():
                 continue
             reff = 1.0 / (1.0 / r1 + 1.0 / r2)
             estar = effective_modulus(t1, t2)
-            fn = abs(float(row[idx["c_cpair[5]"]]))
+            fn = float(row[idx["c_cpair[5]"]])
             if fn <= 0.0:
-                fn = kn * overlap
+                fn = 0.0
             ft = 0.0
             if "c_cpair[12]" in idx:
                 ft = abs(float(row[idx["c_cpair[12]"]]))
@@ -420,6 +412,16 @@ cov_v_q = percentile(grain_arr[:, 9], [10, 50, 90, 99]) if len(grain_arr) else n
 total_mobile_mass = float(np.sum(grain_arr[:, 2])) if len(grain_arr) else np.nan
 total_work = float(np.sum(work_samples)) if work_samples else 0.0
 total_normal = float(np.sum(list(normal_energy.values()))) if normal_energy else 0.0
+if len(grain_arr):
+    mean_grain_mass = float(np.nanmean(grain_arr[:, 2]))
+else:
+    dlo = lmp_var("dlo", 8.0e-5)
+    dhi = lmp_var("dhi", 1.2e-4)
+    if abs(dhi - dlo) > 0.0:
+        mean_d3 = (dhi ** 4 - dlo ** 4) / (4.0 * (dhi - dlo))
+    else:
+        mean_d3 = dlo ** 3
+    mean_grain_mass = rho * np.pi / 6.0 * mean_d3
 
 summary_header = [
     "n_mobile_seen", "npart_requested", "n_contact_records", "n_velocity_contact_records",
@@ -447,6 +449,25 @@ gcols, gdata = read_global_metrics(global_metrics)
 if gdata is not None:
     np.savetxt(root / "global_metrics_clean.csv", gdata, delimiter=",", header=",".join(gcols), comments="")
 
+flow_t_ms = np.array([])
+processed_flow_mg_s = np.array([])
+if gdata is not None and "step" in gcols and "outlet_deleted" in gcols:
+    idx_g = {name: i for i, name in enumerate(gcols)}
+    flow_t_s = gdata[:, idx_g["step"]] * dt
+    processed_mass = gdata[:, idx_g["outlet_deleted"]] * mean_grain_mass
+    if len(flow_t_s) > 1:
+        processed_flow = np.gradient(processed_mass, flow_t_s, edge_order=1)
+    else:
+        processed_flow = np.zeros_like(flow_t_s)
+    processed_flow[~np.isfinite(processed_flow)] = 0.0
+    processed_flow[processed_flow < 0.0] = 0.0
+    if len(bed_arr):
+        keep = (flow_t_s >= bed_arr[0, 1]) & (flow_t_s <= bed_arr[-1, 1])
+    else:
+        keep = np.ones_like(flow_t_s, dtype=bool)
+    flow_t_ms = flow_t_s[keep] * 1.0e3
+    processed_flow_mg_s = processed_flow[keep] * 1.0e6
+
 def finish_axis(ax):
     ax.minorticks_on()
     ax.tick_params(direction="in", top=True, right=True)
@@ -455,7 +476,8 @@ t_ms = bed_arr[:, 1] * 1.0e3
 fig, ax = plt.subplots(4, 1, figsize=(5.6, 6.8), sharex=True)
 ax[0].plot(t_ms, bed_arr[:, 2], "C0", lw=1.2, label="mobile")
 ax[0].plot(t_ms, bed_arr[:, 3], "C1", lw=1.2, label="in bank")
-ax[1].plot(t_ms, flow * 1.0e6, "C3", lw=1.2)
+if len(processed_flow_mg_s):
+    ax[1].plot(flow_t_ms, processed_flow_mg_s, "C3", lw=1.2)
 ax[2].plot(t_ms, bed_arr[:, 8] * 1.0e6, "C4", lw=1.2, label="trans")
 ax[2].plot(t_ms, bed_arr[:, 9] * 1.0e6, "C5", lw=1.2, label="rot")
 ax[3].plot(t_ms, -bed_arr[:, 6], "C6", lw=1.2)
@@ -496,7 +518,7 @@ if len(contact_arr):
     fig.savefig(figdir / "contact_metrics.png", dpi=300, bbox_inches="tight")
 
 if len(grain_arr):
-    fig, ax = plt.subplots(1, 3, figsize=(9.2, 3.0))
+    fig, ax = plt.subplots(1, 2, figsize=(6.6, 3.0))
     if d_force_samples:
         bins_d = np.geomspace(max(1.0e-4, np.nanmin(d_force_samples)), max(1.0e-3, np.nanmax(d_force_samples + d_vel_samples)), 50)
         ax[0].hist(d_force_samples, bins=bins_d, histtype="step", lw=1.4, label="force")
@@ -506,15 +528,12 @@ if len(grain_arr):
     ax[0].set_xlabel(r"$d_{actual}$ ($\mu$m)")
     ax[0].set_ylabel("Contacts")
     ax[0].legend(frameon=False, fontsize=9)
-    ax[1].hist(grain_arr[:, 8] * 1.0e4, bins=50, histtype="stepfilled", alpha=0.35, color="C2")
-    ax[1].set_xlabel(r"Area coverage ($10^{-4}$)")
+    ax[1].hist(grain_arr[:, 3] * 1.0e3, bins=50, histtype="stepfilled", alpha=0.35, color="C3")
+    ax[1].set_xlabel("Residence time (ms)")
     ax[1].set_ylabel("Grains")
-    ax[2].hist(grain_arr[:, 3] * 1.0e3, bins=50, histtype="stepfilled", alpha=0.35, color="C3")
-    ax[2].set_xlabel("Residence time (ms)")
-    ax[2].set_ylabel("Grains")
     for a in ax:
         finish_axis(a)
-    fig.subplots_adjust(left=0.08, right=0.98, bottom=0.24, top=0.95, wspace=0.45)
+    fig.subplots_adjust(left=0.11, right=0.98, bottom=0.24, top=0.95, wspace=0.38)
     fig.savefig(figdir / "grain_distributions.pdf", bbox_inches="tight")
     fig.savefig(figdir / "grain_distributions.png", dpi=300, bbox_inches="tight")
 
