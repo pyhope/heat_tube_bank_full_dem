@@ -220,9 +220,7 @@ frame.
 by summing sampled contact patch areas and dividing by the grain surface area:
 
 $$
-C_i^\mathrm{sampled}
-=
-\frac{\sum_j \pi a_{ij}^2}{4\pi R_i^2}.
+C_i^\mathrm{sampled}=\frac{\sum_j \pi a_{ij}^2}{4\pi R_i^2}.
 $$
 
 This quantity is not currently plotted because it is not yet a reliable
@@ -257,9 +255,7 @@ postprocessing:
    would use
 
 $$
-F_\mathrm{covered}
-=
-1-\exp\left(-\frac{\sum_j A_j}{4\pi R^2}\right),
+F_\mathrm{covered}=1-\exp\left(-\frac{\sum_j A_j}{4\pi R^2}\right),
 $$
 
 where `A_j` is the effective patch area of episode `j`.  This still assumes
